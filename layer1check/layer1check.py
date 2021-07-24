@@ -75,6 +75,7 @@ class layer1checks(aetest.Testcase):
         
         #Create simple datasets for test cases.
         crc_info_out_list = []
+        discard_info_out_list = []
         for intf, data in self.interface_info.info.items():
             counters = data.get('counters')
             if counters:
@@ -82,28 +83,59 @@ class layer1checks(aetest.Testcase):
                 if 'in_crc_errors' in counters:
                     crc_info_in_list.append(device)
                     crc_info_in_list.append(intf)
-                    crc_info_in_list.append(str(counters['in_crc_errors']))
                     crc_info_in_list.append(counters['last_clear'])
+                    crc_info_in_list.append(str(counters['in_crc_errors']))
+                    if counters['in_crc_errors'] > 0:
+                        crc_info_in_list.append('Failed')
+                    else:
+                        crc_info_in_list.append('Passed')
                 else:
                     crc_info_in_list.append(device)
                     crc_info_in_list.append(intf)
-                    crc_info_in_list.extend(['N/A', 'N/A'])
+                    crc_info_in_list.extend(['N/A', 'N/A', 'N/A'])
                 crc_info_out_list.append(crc_info_in_list)
-        print(crc_info_out_list)
+                discard_info_in_list = []
+                if 'out_discard' in counters or 'in_discards' in counters:
+                    discard_info_in_list.append(device)
+                    discard_info_in_list.append(intf)
+                    if 'out_discard' in counters:
+                        discard_info_in_list.append(str(counters['out_discard']))
+                        discard_info_in_list.append('out_discard')
+                    elif 'in_discards' in counters:
+                        discard_info_in_list.append(str(counters['in_discards']))
+                        discard_info_in_list.append('in_discards')
+                    else:
+                        discard_info_in_list.extend(['N/A', 'N/A'])
+                discard_info_out_list.append(discard_info_in_list)
+        self.crc_info_out_list = crc_info_out_list
+        self.discard_info_out_list = discard_info_out_list
 
     # you may have N tests within each testcase
     # as long as each bears a unique method name
     # this is just an example
     @aetest.test
-    def crc_check(self):
+    def crc_check(self, device):
+        '''
+        
+        Check for CRC counters Failed/Pass.         
+
+        '''
+        failed_bit = 0
+        for list_item in self.crc_info_out_list:
+            if list_item[4] == 'Failed':
+                print (list_item[4])
+                self.failed('Interface %s has crc errors %s (threshold 0)'
+                            % (list_item[2], list_item[3] ))
+                failed_bit = 1
+        if failed_bit == 0:
+           self.passed('No interfaces have CRC errors')
+
+    @aetest.test
+    def discards_check(self):
         pass
 
     @aetest.test
     def error_check(self):
-        pass
-
-    @aetest.test
-    def discards_check(self):
         pass
 
     @aetest.test
