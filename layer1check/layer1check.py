@@ -77,92 +77,111 @@ class layer1checks(aetest.Testcase):
         crc_info_out_list = []
         discard_info_out_list = []
         error_info_out_list = []
+        dupl_info_out_list = []
         for intf, data in self.interface_info.info.items():
             counters = data.get('counters')
             descript = data.get('description')
             if counters:
+                #CRC Counter Check
                 crc_info_in_list = []
                 crc_info_in_list.append(device)
                 crc_info_in_list.append(intf)
                 crc_info_in_list.append(descript)
-                if 'in_crc_errors' in counters:
+                if 'in_crc_errors' in counters and counters['in_crc_errors'] != 0 :
                     crc_info_in_list.append(counters['last_clear'])
                     crc_info_in_list.append(str(counters['in_crc_errors']))
-                else:
-                    crc_info_in_list.extend(['none', '0'])
-                crc_info_out_list.append(crc_info_in_list)
+                    crc_info_out_list.append(crc_info_in_list)
+                #Discards Counter Check
                 discard_info_in_list = []
                 discard_info_in_list.append(device)
                 discard_info_in_list.append(intf)
                 discard_info_in_list.append(descript)
-                if 'out_discard' in counters:
+                if 'out_discard' in counters and counters['out_discard'] != 0:
                     discard_info_in_list.append(str(counters['out_discard']))
                     discard_info_in_list.append('out_discard')
-                elif 'in_discards' in counters:
+                    discard_info_out_list.append(discard_info_in_list)
+                elif 'in_discards' in counters and counters['in_discards'] != 0 :
                     discard_info_in_list.append(str(counters['in_discards']))
                     discard_info_in_list.append('in_discards')
-                else:
-                    discard_info_in_list.extend(['0', 'N/A'])
-                discard_info_out_list.append(discard_info_in_list)
+                    discard_info_out_list.append(discard_info_in_list)
+                #Error Counters Check
                 error_info_in_list = []
                 error_info_in_list.append(device)
                 error_info_in_list.append(intf)
                 error_info_in_list.append(descript)
                 if 'in_errors' in counters or 'out_errors' in counters:
                     try:
-                        error_info_in_list.append(str(counters['in_errors']))
-                        error_info_in_list.append('in_errors')
-                        error_info_in_list.append(str(counters['out_errors']))
-                        error_info_in_list.append('out_errors')
+                        if counters['in_errors'] != 0 or counters['out_errors'] != 0:
+                            error_info_in_list.append(str(counters['in_errors']))
+                            error_info_in_list.append('in_errors')
+                            error_info_in_list.append(str(counters['out_errors']))
+                            error_info_in_list.append('out_errors')
+                            error_info_out_list.append(error_info_in_list)
                     except:
-                        error_info_in_list.append(str(counters['out_errors']))
-                        error_info_in_list.append('out_errors')
-                else:
-                    error_info_in_list.extend(['0', 'N/A'])
-                error_info_out_list.append(error_info_in_list)
-
+                        if counters['out_errors'] != 0:
+                            error_info_in_list.append(str(counters['out_errors']))
+                            error_info_in_list.append('out_errors')
+                            error_info_out_list.append(error_info_in_list)
+            #Duplex Field Check
             duplex_mode = data.get('duplex_mode')
+            dupl_info_in_list = []
+            dupl_info_in_list.append(device)
+            dupl_info_in_list.append(intf)
+            dupl_info_in_list.append(descript)
+            if duplex_mode and duplex_mode == 'half':
+                dupl_info_in_list.append(duplex_mode)
+                dupl_info_out_list.append(dupl_info_in_list)    
                
-        self.crc_info_out_list = crc_info_out_list
-        aetest.loop.mark(self.crc_check,
-                         name = (item[1] for item in self.crc_info_out_list))
-        self.discard_info_out_list = discard_info_out_list
-        aetest.loop.mark(self.discards_check, 
-                         name = (item[1] for item in self.discard_info_out_list))
-        self.error_info_out_list = error_info_out_list
-        aetest.loop.mark(self.error_check,
-                         name = (item[1] for item in self.error_info_out_list))
+        if crc_info_out_list:
+            self.crc_info_out_list = crc_info_out_list
+            aetest.loop.mark(self.crc_check,
+                             name = (item[1] for item in self.crc_info_out_list))
+        if discard_info_out_list:
+            self.discard_info_out_list = discard_info_out_list
+            aetest.loop.mark(self.discards_check, 
+                             name = (item[1] for item in self.discard_info_out_list))
+        if error_info_out_list:
+            self.error_info_out_list = error_info_out_list
+            aetest.loop.mark(self.error_check,
+                             name = (item[1] for item in self.error_info_out_list))
+        
+        if dupl_info_out_list:
+            self.dupl_info_out_list = dupl_info_out_list
+            aetest.loop.mark(self.duplex_check,
+                             name = (item[1] for item in self.dupl_info_out_list))
 
     # you may have N tests within each testcase
     # as long as each bears a unique method name
     # this is just an example
     @aetest.test
-    def crc_check(self, name):
+    def crc_check(self):
         '''
         
         Check for CRC counters.         
 
         '''
-        for item_crc in self.crc_info_out_list:
-            if name in item_crc and item_crc[4] != '0':
-                self.failed('%s Description %s CRC count %s, count cleared %s'
-                            %(name, item_crc[2], item_crc[4], item_crc[3]))
-            else:
-                self.passed('no interface CRC above threshold')
+        try:
+           if self.crc_info_out_list:
+               for item_crc in self.crc_info_out_list:
+                    self.failed('%s Description %s CRC count %s, count cleared %s'
+                                %(item_crc[1], item_crc[2], item_crc[4], item_crc[3]))
+        except AttributeError:
+            self.passed('no interface CRC above threshold')
 
     @aetest.test
-    def discards_check(self, name):
+    def discards_check(self):
         '''
         
         Check for in/out Discard counters.        
 
         '''
-        for item_disc in self.discard_info_out_list:
-            if name in item_disc and item_disc[3] != '0':
-                self.failed('%s Description %s has %s %s' 
-                            %(name, item_disc[2], item_disc[3], item_disc[4]))
-            else:
-                self.passed('no interface discards')
+        try:
+           if self.discard_info_out_list:
+               for item_disc in self.discard_info_out_list:
+                    self.failed('%s Description %s has %s %s' 
+                                %(item_disc[1], item_disc[2], item_disc[3], item_disc[4]))
+        except AttributeError:
+            self.passed('No Interface Discards Detected')
 
     @aetest.test
     def error_check(self):
@@ -171,22 +190,34 @@ class layer1checks(aetest.Testcase):
         Check for in/out Error counter.
 
         '''
-        for item_erro in self.error_info_out_list:
-            if len(item_erro) > 5:
-                if item_erro[3] != '0' or item_erro[5] != '0':
-                    self.failed('%s Description %s has interface errors'
-                                %(item_disc[1], item_disc[2] ))
-                elif item_erro[3] != '0':
-                 self.failed('%s Description %s has interface errors'
-                             %(item_disc[1], item_disc[2] ))
-                else:
-                    self.passed('no interface errors')
-
+        try:
+            if self.error_info_out_list:
+                for item_erro in self.error_info_out_list:
+                    if len(item_erro) > 5:
+                        if item_erro[3] != '0' or item_erro[5] != '0':
+                            self.failed('%s Description %s has interface errors'
+                                        %(item_disc[1], item_disc[2] ))
+                        elif item_erro[3] != '0':
+                            self.failed('%s Description %s has interface errors'
+                                        %(item_disc[1], item_disc[2] ))
+        except AttributeError:
+            self.passed('No Interface Errors Detected')
                 
 
     @aetest.test
     def duplex_check(self):
-        pass
+        '''
+ 
+        Interface Duplex Check.    
+ 
+        '''
+        try:
+            if self.dupl_info_out_list:
+                for item_duplx in self.dupl_info_out_list:
+                    self.failed('%s Description %s shows %s duplex'
+                                %(item_duplx[1], item_duplx[2], item_duplx[3]))
+        except AttributeError:
+            self.passed('no half duplex interfaces detected')
 
     @aetest.test
     def oper_status_check(self):
