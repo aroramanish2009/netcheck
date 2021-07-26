@@ -13,6 +13,9 @@ __version__ = 0.1
 
 import logging
 import pprint
+import sys
+sys.path.insert(0, '../lib/common')
+import NetcheckCommon
 
 from pyats import aetest
 
@@ -84,18 +87,16 @@ class layer1checks(aetest.Testcase):
             if counters:
                 #CRC Counter Check
                 crc_info_in_list = []
-                crc_info_in_list.append(device)
-                crc_info_in_list.append(intf)
-                crc_info_in_list.append(descript)
+                crc_info_in_list = NetcheckCommon.append2list(crc_info_in_list, 
+                                                              device, intf, descript)
                 if 'in_crc_errors' in counters and counters['in_crc_errors'] != 0 :
                     crc_info_in_list.append(counters['last_clear'])
                     crc_info_in_list.append(str(counters['in_crc_errors']))
                     crc_info_out_list.append(crc_info_in_list)
                 #Discards Counter Check
                 discard_info_in_list = []
-                discard_info_in_list.append(device)
-                discard_info_in_list.append(intf)
-                discard_info_in_list.append(descript)
+                discard_info_in_list = NetcheckCommon.append2list(discard_info_in_list,
+                                                                  device, intf, descript)
                 if 'out_discard' in counters and counters['out_discard'] != 0:
                     discard_info_in_list.append(str(counters['out_discard']))
                     discard_info_in_list.append('out_discard')
@@ -106,9 +107,8 @@ class layer1checks(aetest.Testcase):
                     discard_info_out_list.append(discard_info_in_list)
                 #Error Counters Check
                 error_info_in_list = []
-                error_info_in_list.append(device)
-                error_info_in_list.append(intf)
-                error_info_in_list.append(descript)
+                error_info_in_list = NetcheckCommon.append2list(error_info_in_list,
+                                                                device, intf, descript)
                 if 'in_errors' in counters or 'out_errors' in counters:
                     try:
                         if counters['in_errors'] != 0 or counters['out_errors'] != 0:
@@ -125,9 +125,8 @@ class layer1checks(aetest.Testcase):
             #Duplex Field Check
             duplex_mode = data.get('duplex_mode')
             dupl_info_in_list = []
-            dupl_info_in_list.append(device)
-            dupl_info_in_list.append(intf)
-            dupl_info_in_list.append(descript)
+            dupl_info_in_list = NetcheckCommon.append2list(dupl_info_in_list,
+                                                           device, intf, descript)
             if duplex_mode and duplex_mode == 'half':
                 dupl_info_in_list.append(duplex_mode)
                 dupl_info_out_list.append(dupl_info_in_list)    
