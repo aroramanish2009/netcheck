@@ -18,6 +18,7 @@ sys.path.insert(0, '../lib/common')
 import NetcheckCommon
 
 from pyats import aetest
+from pyats.log.utils import banner
 
 # create a logger for this module
 logger = logging.getLogger(__name__)
@@ -67,11 +68,14 @@ class layer1checks(aetest.Testcase):
         
         '''
         device = testbed.devices[device]
+       
+        logger.info(banner("Gathering Interface Information from %s"
+                           % device))
 
         if device.connected:
             #Refer to Genie Libs for learn model reference
             self.interface_info = device.learn('interface')
-            #pprint.pprint(self.interface_info.info)
+            pprint.pprint(self.interface_info.info)
         else:
             self.failed('Cannot learn %s interface information: '
                         'did not establish connectivity to device'
@@ -237,6 +241,15 @@ class layer1checks(aetest.Testcase):
                                     %(item_duplx[1], item_duplx[2], item_duplx[3]))
         except AttributeError:
             self.passed('no half duplex interfaces detected')
+  
+    @aetest.test
+    def LAG_check(self, name = 'none'):
+        '''
+
+        Link Aggregation Check. 
+
+        '''
+        pass
 
     @aetest.test
     def ipv4_intf_check(self, name = 'none'):
@@ -253,6 +266,15 @@ class layer1checks(aetest.Testcase):
                                     %(item_inft[1], item_inft[2], item_inft[3:]))
         except AttributeError:
             self.passed('All Interfaces with IPv4 Configured are status UP')
+ 
+    @aetest.test
+    def ipv6_intf_check(self, name = 'none'):
+        '''
+       
+        Operation status for Interface with IPv6 Configured.     
+
+        '''
+        pass
 
     @aetest.cleanup
     def cleanup(self):
