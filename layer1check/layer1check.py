@@ -14,6 +14,7 @@ __version__ = 0.1
 import logging
 import pprint
 import sys
+import re
 sys.path.insert(0, '../lib/common')
 import NetcheckCommon
 
@@ -75,7 +76,7 @@ class layer1checks(aetest.Testcase):
         if device.connected:
             #Refer to Genie Libs for learn model reference
             self.interface_info = device.learn('interface')
-            pprint.pprint(self.interface_info.info)
+            #pprint.pprint(self.interface_info.info)
         else:
             self.failed('Cannot learn %s interface information: '
                         'did not establish connectivity to device'
@@ -87,6 +88,9 @@ class layer1checks(aetest.Testcase):
         error_info_out_list = []
         dupl_info_out_list = []
         inft_status_out_list = []
+        inft6_status_out_list = []
+        lag_no_mem_out_list = []
+        lag_mem_down_out_list = []
         for intf, data in self.interface_info.info.items():
             counters = data.get('counters')
             descript = data.get('description')
@@ -130,15 +134,30 @@ class layer1checks(aetest.Testcase):
                             error_info_out_list.append(error_info_in_list)
             #Duplex Field Check
             duplex_mode = data.get('duplex_mode')
+            osta = data.get('oper_status')
             dupl_info_in_list = []
             dupl_info_in_list = NetcheckCommon.append2list(dupl_info_in_list,
                                                            device, intf, descript)
             if duplex_mode and duplex_mode == 'half':
                 dupl_info_in_list.append(duplex_mode)
-                dupl_info_out_list.append(dupl_info_in_list)    
-            #IPv4 Interface Operational Status
+                dupl_info_out_list.append(dupl_info_in_list)   
+            #LAG Checks
+            pc_mode = data.get('port_channel')
+            if pc_mode:
+                lag_no_mem_in_list = []
+                lag_no_mem_in_list = NetcheckCommon.append2list(lag_no_mem_in_list,
+                                                                device, intf, descript)
+                if pc_mode['port_channel_member'] == False and re.search("Port-channel", intf):
+                    lag_no_mem_in_list.append(pc_mode['port_channel_member'])
+                    lag_no_mem_out_list.append(lag_no_mem_in_list)
+                elif pc_mode['port_channel_member'] == True and osta != 'up' and not re.search("Port-channel", intf):
+                    lag_no_mem_in_list.append(pc_mode['port_channel_int'])
+                    lag_no_mem_in_list.append(osta)
+                    lag_mem_down_out_list.append(lag_no_mem_in_list)
+              
+            #IPv4 and IPv6 Interface Operational Status
             ipv4 = data.get('ipv4')
-            osta = data.get('oper_status')
+            ipv6 = data.get('ipv6')
             if ipv4 and osta != 'up':
                 inft_status_in_list = []
                 inft_status_in_list = NetcheckCommon.append2list(inft_status_in_list,
@@ -146,6 +165,18 @@ class layer1checks(aetest.Testcase):
                 for cidr, value in ipv4.items():
                     inft_status_in_list.append(cidr)
                 inft_status_out_list.append(inft_status_in_list)
+            if ipv6 and osta != 'up':
+                inft6_status_in_list = []
+                inft6_status_in_list = NetcheckCommon.append2list(inft6_status_in_list,
+                                                                 device, intf, descript)
+                if 'enabled' in ipv6 and len(ipv6) > 1:
+                    cidr = [cidr for cidr, value in ipv6.items()]
+                    inft6_status_in_list.append(cidr[:-1])
+                    inft6_status_out_list.append(inft6_status_in_list)
+                elif 'enabled' not in ipv6:
+                    cidr = [cidr for cidr, value in ipv6.items()]
+                    inft6_status_in_list.append(cidr)
+                    inft6_status_out_list.append(inft6_status_in_list)
                
         if crc_info_out_list:
             self.crc_info_out_list = crc_info_out_list
@@ -164,9 +195,21 @@ class layer1checks(aetest.Testcase):
             aetest.loop.mark(self.duplex_check,
                              name = (item[1] for item in self.dupl_info_out_list))
         if inft_status_out_list:
-           self.inft_status_out_list = inft_status_out_list
-           aetest.loop.mark(self.ipv4_intf_check,
-                            name = (item[1] for item in self.inft_status_out_list))
+            self.inft_status_out_list = inft_status_out_list
+            aetest.loop.mark(self.ipv4_intf_check,
+                             name = (item[1] for item in self.inft_status_out_list))
+        if inft6_status_out_list:
+            self.inft6_status_out_list = inft6_status_out_list
+            aetest.loop.mark(self.ipv6_intf_check,
+                             name = (item[1] for item in self.inft6_status_out_list))                            
+        if lag_no_mem_out_list:
+            self.lag_no_mem_out_list = lag_no_mem_out_list
+            aetest.loop.mark(self.LAG_member_check,
+                             name = (item[1] for item in self.lag_no_mem_out_list))
+        if lag_mem_down_out_list:
+           self.lag_mem_down_out_list = lag_mem_down_out_list
+           aetest.loop.mark(self.LAG_intf_oper_check,
+                            name = (item[1] for item in self.lag_mem_down_out_list))
 
     # you may have N tests within each testcase
     # as long as each bears a unique method name
@@ -243,13 +286,36 @@ class layer1checks(aetest.Testcase):
             self.passed('no half duplex interfaces detected')
   
     @aetest.test
-    def LAG_check(self, name = 'none'):
+    def LAG_member_check(self, name = 'none'):
         '''
 
-        Link Aggregation Check. 
+        Link Aggregation Member Interface association check.
 
         '''
-        pass
+        try:
+            if self.lag_no_mem_out_list:
+                for item_inft in self.lag_no_mem_out_list:
+                    if item_inft[1] == name:
+                        self.failed('%s has no member interface configured'
+                                    %(item_inft[1]))
+        except AttributeError:
+            self.passed('No Memberless Link Aggregation Interfaces Found')
+
+    @aetest.test
+    def LAG_intf_oper_check(self, name = 'none'):
+        '''
+ 
+        Link Aggregation Member Operation Status Check 
+
+        '''
+        try:
+            if self.lag_mem_down_out_list:
+                for item_inft in self.lag_mem_down_out_list:
+                    if item_inft[1] == name:
+                        self.failed('Interface %s Description: %s Member of %s is Down'
+                                    %(item_inft[1], item_inft[2], item_inft[3]))
+        except AttributeError:
+            self.passed('No Down Members of Port Channel Detected')
 
     @aetest.test
     def ipv4_intf_check(self, name = 'none'):
@@ -274,7 +340,13 @@ class layer1checks(aetest.Testcase):
         Operation status for Interface with IPv6 Configured.     
 
         '''
-        pass
+        try:
+            if self.inft6_status_out_list:
+                for item_inft in self.inft6_status_out_list:
+                     self.failed('%s Description %s IPv6 %s is Down'
+                                 %(item_inft[1], item_inft[2], item_inft[3:]))
+        except AttributeError:
+            self.passed('All Interfaces with IPv6 Configured are status UP')
 
     @aetest.cleanup
     def cleanup(self):
@@ -308,4 +380,3 @@ if __name__ == '__main__':
     args = parser.parse_known_args()[0]
 
     aetest.main(testbed = args.testbed)
-
