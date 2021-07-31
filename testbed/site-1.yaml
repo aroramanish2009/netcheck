@@ -1,0 +1,78 @@
+#Example testbed file
+#
+#
+testbed:
+    name: sampleTestbed
+    alias: topologySampleTestbed
+    credentials:
+        default:
+            username: ansible
+            password: "%ENC{gAAAAABhBHBdvBBIO9OiD-Z2kcY6oKcj5cN0mLddlhdthv3OdLqj971DrEwglVSxysj-q4-eJIjzQzC2DhJHIEbud0zWWTqd6w==}"
+
+devices:
+    nxos:
+        os: nxos
+        type: NXOS
+        alias: nxos
+        connections:
+            a:
+              protocol: ssh
+              ip: 192.168.250.11
+              port: 22
+    nxos-2:
+        os: nxos
+        type: NXOS
+        alias: nxos-2
+        connections:
+            a:
+              protocol: ssh
+              ip: 192.168.250.12
+              port: 22
+  
+    xrv:
+        os: iosxr
+        type: IOSXR
+        alias: xrv
+        connections:
+            a:
+              protocol: ssh
+              ip: 192.168.250.10
+              port: 22
+
+topology:
+    nxos:
+        interfaces:
+            Eth1/1:
+                alias: nxos-eth1/1
+                link: nxos-xrv-1
+                type: ethernet
+                ipv4: 10.10.10.1/30
+            Lo0:
+                alias: nxos-Lo0
+                type: loopback
+                ipv4: 1.1.1.1/32
+            mgmt0:
+                alias: nxos-mgmt
+                type: ethernet
+                ipv4: 192.168.250.11/24
+    nxos-2:
+        interfaces:
+            mgmt0:
+                alias: nxos-mgmt
+                type: ethernet
+                ipv4: 192.168.250.12/24
+    xrv:
+        interfaces:
+            GigabitEthernet0/0/0/0:
+                alias: xrv-gig0/0/0/0
+                link: nxos-xrv-1
+                type: ethernet
+                ipv4: 10.10.10.2/30
+            Loopback0:
+                alias: xrv-Lo0
+                type: loopback
+                ipv4: 2.2.2.2/32
+            MgmtEth0/0/CPU0/0:
+                alias: xrv-mgmt
+                type: ethernet
+                ipv4: 192.168.250.10/24
