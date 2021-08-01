@@ -16,6 +16,7 @@ __version__ = 1.0
 import logging
 
 from pyats import aetest
+from pyats import topology
 
 # create a logger for this module
 logger = logging.getLogger(__name__)
@@ -32,6 +33,18 @@ class CommonSetup(aetest.CommonSetup):
 
         # connect to all testbed devices
         testbed.connect()
+      
+    @aetest.subsection
+    def prepare_testcases(self, testbed):
+        '''
+
+        Mark Class layer2checks to loop for each device in testbed.
+
+        '''
+        #Learn model used only supports Cisco products.
+        aetest.loop.mark(layer2check,
+                         device = [d.name for d in testbed if d.os
+                                   in ('iosxr', 'nxos')])
 
 
 class layer2check(aetest.Testcase):
@@ -52,7 +65,9 @@ class layer2check(aetest.Testcase):
     # as long as each bears a unique method name
     # this is just an example
     @aetest.test
-    def vlan_config_check(self):
+    def vlan_config_check(self, device, vlans):
+        for i in vlans:
+            [print (v) for k,v in i.items() if k == device]
         pass
 
     @aetest.test
