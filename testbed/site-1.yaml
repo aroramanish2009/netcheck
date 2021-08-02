@@ -42,23 +42,42 @@ devices:
 topology:
     nxos:
         interfaces:
-            Eth1/1:
+            port-channel1:
+                alias: nxos-po1
+                link: nxos-nxos-2-l3-1
+                type: portchannel
+                ipv4: 10.10.20.2/31
+            Ethernet1/1:
                 alias: nxos-eth1/1
                 link: nxos-xrv-1
                 type: ethernet
                 ipv4: 10.10.10.1/30
-            Lo0:
+            loopback0:
                 alias: nxos-Lo0
                 type: loopback
                 ipv4: 1.1.1.1/32
             mgmt0:
                 alias: nxos-mgmt
+                link: nxos-mgmt-sw
                 type: ethernet
                 ipv4: 192.168.250.11/24
     nxos-2:
         interfaces:
+            port-channel1:
+                alias: nxos-2-po1
+                link: nxos-nxos-2-l3-1
+                type: portchannel
+                ipv4: 10.10.20.3/31
+            Ethernet1/1:
+                alias: nxos-2-eth1/1
+                link: nxos-2-xrv-1
+                type: ethernet
+                ipv4: 5.5.5.6/30
+                ipv6: 2001:db8:cc1e::3/127
+                mtu: 8216
             mgmt0:
                 alias: nxos-mgmt
+                link: nxos-2-mgmt-sw
                 type: ethernet
                 ipv4: 192.168.250.12/24
     xrv:
@@ -68,11 +87,19 @@ topology:
                 link: nxos-xrv-1
                 type: ethernet
                 ipv4: 10.10.10.2/30
+            GigabitEthernet0/0/0/2:
+                alias: xrv-gig0/0/0/2
+                link: nxos-2-xrv-1
+                type: ethernet
+                ipv4: 5.5.5.5/30
+                ipv6: 2001:db8:cc1e::2/127
+                mtu: 8230
             Loopback0:
                 alias: xrv-Lo0
                 type: loopback
                 ipv4: 2.2.2.2/32
             MgmtEth0/0/CPU0/0:
                 alias: xrv-mgmt
+                link: xrv-mgmt-sw
                 type: ethernet
                 ipv4: 192.168.250.10/24

@@ -19,6 +19,7 @@ sys.path.insert(0, '../lib/common')
 import NetcheckCommon
 
 from pyats import aetest
+from pyats import topology
 from pyats.log.utils import banner
 
 # create a logger for this module
@@ -81,7 +82,6 @@ class layer1checks(aetest.Testcase):
             self.failed('Cannot learn %s interface information: '
                         'did not establish connectivity to device'
                         % device.name)
-        
         #Create simple datasets for test cases.
         crc_info_out_list = []
         discard_info_out_list = []
@@ -140,7 +140,21 @@ class layer1checks(aetest.Testcase):
                                                            device, intf, descript)
             if duplex_mode and duplex_mode == 'half':
                 dupl_info_in_list.append(duplex_mode)
-                dupl_info_out_list.append(dupl_info_in_list)   
+                dupl_info_out_list.append(dupl_info_in_list)  
+            #MTU Verification with topology in testbed
+            mtu_info = data.get('mtu')
+            mtu_info_in_list = []
+            mtu_info_in_list = NetcheckCommon.append2list(mtu_info_in_list,
+                                                          device, intf, descript)
+            if mtu_info:
+                for topo_inft in device.interfaces:
+                    if topo_inft == intf and device.interfaces[topo_inft].mtu != 'None':
+                        if device.interfaces[topo_inft].mtu != mtu_info:
+                            print (device.interfaces[topo_inft].mtu)
+                            print (mtu_info)
+                        else:
+                            print ('No MTU mismatch') 
+                 
             #LAG Checks
             pc_mode = data.get('port_channel')
             if pc_mode:

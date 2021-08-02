@@ -33,7 +33,7 @@ class CommonSetup(aetest.CommonSetup):
 
         # connect to all testbed devices
         testbed.connect()
-      
+       
     @aetest.subsection
     def prepare_testcases(self, testbed):
         '''
@@ -44,7 +44,7 @@ class CommonSetup(aetest.CommonSetup):
         #Learn model used only supports Cisco products.
         aetest.loop.mark(layer2check,
                          device = [d.name for d in testbed if d.os
-                                   in ('iosxr', 'nxos')])
+                                   in ('ios', 'iosxe','iosxr', 'nxos')])
 
 
 class layer2check(aetest.Testcase):
@@ -58,7 +58,12 @@ class layer2check(aetest.Testcase):
     # groups = []
 
     @aetest.setup
-    def setup(self):
+    def setup(self, device, testbed):
+        for link in testbed.devices[device].links:
+            print (link)
+        for intf in testbed.devices[device].interfaces:
+            if testbed.devices[device].interfaces[intf].mtu:
+                print (testbed.devices[device].interfaces[intf].mtu)
         pass
 
     # you may have N tests within each testcase
