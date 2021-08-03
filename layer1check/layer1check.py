@@ -89,6 +89,7 @@ class layer1checks(aetest.Testcase):
         dupl_info_out_list = []
         inft_status_out_list = []
         inft6_status_out_list = []
+        mtu_info_out_list = []
         lag_no_mem_out_list = []
         lag_mem_down_out_list = []
         for intf, data in self.interface_info.info.items():
@@ -148,12 +149,11 @@ class layer1checks(aetest.Testcase):
                                                           device, intf, descript)
             if mtu_info:
                 for topo_inft in device.interfaces:
-                    if topo_inft == intf and device.interfaces[topo_inft].mtu != 'None':
+                    if topo_inft == intf and device.interfaces[topo_inft].mtu:
                         if device.interfaces[topo_inft].mtu != mtu_info:
-                            print (device.interfaces[topo_inft].mtu)
-                            print (mtu_info)
-                        else:
-                            print ('No MTU mismatch') 
+                            mtu_info_in_list.append(device.interfaces[topo_inft].mtu)
+                            mtu_info_in_list.append(mtu_info)
+                            mtu_info_out_list.append(mtu_info_in_list)
                  
             #LAG Checks
             pc_mode = data.get('port_channel')
@@ -208,6 +208,10 @@ class layer1checks(aetest.Testcase):
             self.dupl_info_out_list = dupl_info_out_list
             aetest.loop.mark(self.duplex_check,
                              name = (item[1] for item in self.dupl_info_out_list))
+        if mtu_info_out_list:
+            self.mtu_info_out_list = mtu_info_out_list
+            aetest.loop.mark(self.mtu_check,
+                             name = (item[1] for item in self.mtu_info_out_list))
         if inft_status_out_list:
             self.inft_status_out_list = inft_status_out_list
             aetest.loop.mark(self.ipv4_intf_check,
@@ -313,7 +317,23 @@ class layer1checks(aetest.Testcase):
                         self.failed('%s has no member interface configured'
                                     %(item_inft[1]))
         except AttributeError:
-            self.passed('No Memberless Link Aggregation Interfaces Found')
+            self.passed('No Memberless Link Aggregation Interfaces discovered')
+
+    @aetest.test
+    def mtu_check(self, name = 'none'):
+        '''
+        
+        MTU check against MTU documented in topology interface section. 
+        
+        '''
+        try:
+            if self.mtu_info_out_list:
+                for item_inft in self.mtu_info_out_list:
+                    if item_inft[1] == name:
+                        self.failed('Interface %s Description: %s MTU Mismatch, Documented value %s vs Configured value %s'
+                                    %(item_inft[1], item_inft[2], item_inft[3], item_inft[4]))
+        except AttributeError:
+            self.passed('No MTU Mismatch detected')
 
     @aetest.test
     def LAG_intf_oper_check(self, name = 'none'):
