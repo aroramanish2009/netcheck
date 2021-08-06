@@ -1,5 +1,16 @@
 '''
-layer1check.py
+layer1check.py check following layer 1 related issues
+ - crc_check: CRC counter above 0
+ - discards_check: In/Out Discard counter above 0
+ - error_check: In/Out Errors counter above 0
+ - duplex_check: Check for any Half Duplex ports
+ - LAG_member_check: LAG ports without Member Intf
+ - mtu_check: Match configured MTU with mtu in testbed topology section
+ - LAG_intf_oper_check: LAG memberport in Down state
+ - ipv4_intf_check: Port with IPv4 Add in Down state
+ - ipv6_intf_check: Port with IPv6 Add in Down state
+ - transceiver_light_check: Requested
+ - errdisable_check: Requested
 
 '''
 # see https://pubhub.devnetcloud.com/media/pyats/docs/aetest/index.html
