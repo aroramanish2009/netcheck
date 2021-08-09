@@ -14,6 +14,7 @@ __credits__ = ['list', 'of', 'credit']
 __version__ = 1.0
 
 import logging
+import pprint
 
 from pyats import aetest
 from pyats import topology
@@ -64,6 +65,17 @@ class layer2check(aetest.Testcase):
         for intf in testbed.devices[device].interfaces:
             if testbed.devices[device].interfaces[intf].mtu:
                 print (testbed.devices[device].interfaces[intf].mtu)
+        
+        device = testbed.devices[device]
+        if device.connected:
+            self.arp_info = device.learn('arp')
+            pprint.pprint(self.arp_info.info)
+            self.vlan_info = device.learn('vlan')
+            pprint.pprint(self.vlan_info.info)
+            self.stp_info = device.learn('stp')
+            pprint.pprint(self.stp_info.info)
+            self.vxlan_info = device.learn('vxlan')
+            pprint.pprint(self.vxlan_info.info)
         pass
 
     # you may have N tests within each testcase
