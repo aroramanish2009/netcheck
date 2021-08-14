@@ -60,9 +60,12 @@ class CommonSetup(aetest.CommonSetup):
 
 
 class vlan(aetest.Testcase):
-    '''vlan
+    '''vlan Check
 
-    < docstring description of this testcase >
+    Tests:
+        vlan id & name configured
+        vlan interface association
+        
 
     '''
 
@@ -70,14 +73,35 @@ class vlan(aetest.Testcase):
     # groups = []
 
     @aetest.setup
-    def setup(self):
-        pass
+    def setup(self, device, testbed):
+        device = testbed.devices[device]
+        if device.connected:
+            self.vlan_info = device.learn('vlan')
+            pprint.pprint(self.vlan_info.info)
+        else:
+            self.failed('Cannot learn %s vlan information: '
+                        'did not establish connectivity to device'
+                        % device.name)
+        vlan_info_out_list = []
+        for vlan, data in self.vlan_info.info.items():
+            vlans = [k for k, v in data['configuration'].items()]
+            for i in vlans:
+                if i != '1':
+                    vlan_info_out_list.append({ x:y for (x,y) in data[i].items() if x == 'vlan_id' or x == 'name' or x == 'interfaces' })
+        
+        if vlan_info_out_list:
+            self.vlan_info_out_list = vlan_info_out_list
 
     # you may have N tests within each testcase
     # as long as each bears a unique method name
     # this is just an example
     @aetest.test
-    def test(self):
+    def vlan_id_name_check(self):
+        print (self.vlan_info_out_list)
+        pass
+
+    @aetest.test
+    def vlan_inft_check(self):
         pass
 
     @aetest.cleanup
