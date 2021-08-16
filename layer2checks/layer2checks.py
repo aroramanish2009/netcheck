@@ -92,14 +92,14 @@ class vlan(aetest.Testcase):
         
         if vlan_info_out_list:
             self.vlan_info_out_list = vlan_info_out_list
-            aetest.loop.mark(self.vlan_attr_check,
-                             vlan_id = (item['vlan_id'] for item in self.vlan_info_out_list))
+            #aetest.loop.mark(self.vlan_attr_check,
+                             #vlan_id = (item['vlan_id'] for item in self.vlan_info_out_list))
 
     # you may have N tests within each testcase
     # as long as each bears a unique method name
     # this is just an example
     @aetest.test
-    def vlan_attr_check(self, device, vlans, vlan_id = 'none'):
+    def vlan_attr_check(self, device, vlans):
         try:
             if self.vlan_info_out_list:
                 for q in vlans:
@@ -107,10 +107,24 @@ class vlan(aetest.Testcase):
                         if k == device:
                             vlan_sot = v
                 vlan_sot =  NetcheckCommon.intf_range_expand(vlan_sot)
-                print (self.vlan_info_out_list)
-                print (vlan_sot)
+                missing_from_sot = []
+                for item in self.vlan_info_out_list:
+                    if item not in vlan_sot:
+                        missing_from_sot.append(item)
+                missing_from_configuation = []
+                for item in vlan_sot:
+                    if item not in self.vlan_info_out_list:
+                        missing_from_configuation.append(item)
+                if missing_from_sot and not missing_from_configuation:
+                    self.failed('{} does not match Source of Truth'.format(missing_from_sot))
+                elif missing_from_configuation and not missing_from_sot:
+                    self.failed('{} present in Source of Truth but missing from Conguration'.format(missing_from_configuation))
+                elif missing_from_sot and missing_from_configuation:
+                    self.failed('{} missing in Source of Truth and {} missing from Configuration'.format(missing_from_sot, missing_from_configuation))
+                else:
+                    self.passed('VLAN-ID configuration matches Source of Truth in Datafile')
         except AttributeError:
-            self.passed('No Vlans Configured on Device {}'.format(device))
+            self.skipped('No Vlans Configured on Device {}'.format(device))
 
     @aetest.test
     def vlan_inft_check(self):
