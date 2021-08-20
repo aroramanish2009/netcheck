@@ -138,16 +138,12 @@ class vlan(aetest.Testcase):
                     cflag = 0
                     for diff_from_config_i in diff_from_config:
                         diff_config_vlan_id = diff_from_config_i.get('vlan_id')
-                        diff_config_vlan_name = diff_from_config_i.get('name')
-                        diff_config_vlan_intf = diff_from_config_i.get('interfaces')
                         for vlan_sot_i in vlan_sot:
                             vlan_sot_vlan_id = vlan_sot_i.get('vlan_id')
                             if diff_config_vlan_id == vlan_sot_vlan_id:
                                 cflag = 1
                         if cflag == 0:
-                            vlan_configured_missing_in_sot.append(diff_config_vlan_id)
-                            vlan_configured_missing_in_sot.append(diff_config_vlan_name)
-                            vlan_configured_missing_in_sot.append(diff_config_vlan_intf)
+                            vlan_configured_missing_in_sot.append(diff_from_config_i)
                 if vlan_configured_missing_in_sot:
                     vlan_ids_missing.append('VLANs {} present in device configuration, missing in Source of Truth.'
                                             .format(vlan_configured_missing_in_sot)) 
