@@ -8,6 +8,6 @@ testcases:
         
         parameters:
             vlans:
-                - nxos: [{'vlan_id': '30', 'name': 'test', 'interfaces': ['Port-channel2', 'Ethernet1/5-7']}]
-                - nxos-2: [{'vlan_id': '30', 'name': 'test', 'interfaces': ['Port-channel2', 'Ethernet1/5-6']}, {'vlan_id': '50', 'name': 'test2'}, {'vlan_id': '40', 'name': 'test2'}]
+                - nxos: [{'vlan_id': '30', 'name': 'test', 'interfaces': ['Port-channel2', 'Ethernet1/5-6']}]
+                - nxos-2: [{'vlan_id': '30', 'name': 'test', 'interfaces': ['Port-channel2', 'Ethernet1/5-6']}, {'vlan_id': '40', 'name': 'test2'}]
             trunks: [{nxos: ['Po2']}, {nxos-2: ['Po2']}]

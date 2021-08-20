@@ -77,7 +77,7 @@ class vlan(aetest.Testcase):
         device = testbed.devices[device]
         if device.connected:
             self.vlan_info = device.learn('vlan')
-            pprint.pprint(self.vlan_info.info)
+            #pprint.pprint(self.vlan_info.info)
         else:
             self.failed('Cannot learn %s vlan information: '
                         'did not establish connectivity to device'
@@ -92,8 +92,6 @@ class vlan(aetest.Testcase):
         
         if vlan_info_out_list:
             self.vlan_info_out_list = vlan_info_out_list
-            #aetest.loop.mark(self.vlan_attr_check,
-                             #vlan_id = (item['vlan_id'] for item in self.vlan_info_out_list))
 
     # you may have N tests within each testcase
     # as long as each bears a unique method name
@@ -107,28 +105,59 @@ class vlan(aetest.Testcase):
                         if k == device:
                             vlan_sot = v
                 vlan_sot =  NetcheckCommon.intf_range_expand(vlan_sot)
-                missing_from_sot = []
-                for item in self.vlan_info_out_list:
-                    if item not in vlan_sot:
-                        missing_from_sot.append(item)
-                missing_from_configuation = []
-                for item in vlan_sot:
-                    if item not in self.vlan_info_out_list:
-                        missing_from_configuation.append(item)
-                if missing_from_sot and not missing_from_configuation:
-                    self.failed('{} does not match Source of Truth'.format(missing_from_sot))
-                elif missing_from_configuation and not missing_from_sot:
-                    self.failed('{} present in Source of Truth but missing from Conguration'.format(missing_from_configuation))
-                elif missing_from_sot and missing_from_configuation:
-                    self.failed('{} missing in Source of Truth and {} missing from Configuration'.format(missing_from_sot, missing_from_configuation))
+                diff_from_config = [i for i in self.vlan_info_out_list if i not in vlan_sot]
+                diff_from_sot = [i for i in vlan_sot if i not in self.vlan_info_out_list]
+                vlan_mismatch_attr, vlan_ids_missing, vlan_intf_mismatch = [], [], []
+                vlan_configured_missing_in_sot, vlan_name_mismatch, vlan_id_not_in_config = [], [], []
+                if diff_from_sot:
+                    flag = 0
+                    for diff_from_sot_i in diff_from_sot:
+                        diff_vlan_id = diff_from_sot_i.get('vlan_id')
+                        diff_vlan_name = diff_from_sot_i.get('name')
+                        diff_vlan_intf = diff_from_sot_i.get('interfaces')
+                        for self.vlan_info_out_list_i in self.vlan_info_out_list:
+                            config_vlan_id = self.vlan_info_out_list_i.get('vlan_id')
+                            config_vlan_name = self.vlan_info_out_list_i.get('name')
+                            config_vlan_intf = self.vlan_info_out_list_i.get('interfaces')
+                            if config_vlan_id == diff_vlan_id:
+                                flag = 1
+                                if config_vlan_name != diff_vlan_name:
+                                    vlan_name_mismatch.append('Vlan ID {} Name Mismatch, configured: "{}" and Source of Truth "{}".'
+                                                              .format(config_vlan_id, config_vlan_name, diff_vlan_name))
+                                if config_vlan_intf != diff_vlan_intf:
+                                    vlan_intf_mismatch.append('Vlan ID {} Interface Mismatch, configured: {} and Source of Truth {}.'
+                                                              .format(config_vlan_id, config_vlan_intf, diff_vlan_intf))
+                        if flag == 0:
+                            vlan_id_not_in_config.append(diff_vlan_id)
+                    if vlan_name_mismatch or vlan_intf_mismatch:
+                        vlan_mismatch_attr = vlan_name_mismatch + vlan_intf_mismatch
+                    if vlan_id_not_in_config:
+                        vlan_ids_missing.append('vlan_ids {} missing in device configuration, present in Source of Truth.'
+                                                .format(vlan_id_not_in_config))
+                if diff_from_config:
+                    cflag = 0
+                    for diff_from_config_i in diff_from_config:
+                        diff_config_vlan_id = diff_from_config_i.get('vlan_id')
+                        diff_config_vlan_name = diff_from_config_i.get('name')
+                        diff_config_vlan_intf = diff_from_config_i.get('interfaces')
+                        for vlan_sot_i in vlan_sot:
+                            vlan_sot_vlan_id = vlan_sot_i.get('vlan_id')
+                            if diff_config_vlan_id == vlan_sot_vlan_id:
+                                cflag = 1
+                        if cflag == 0:
+                            vlan_configured_missing_in_sot.append(diff_config_vlan_id)
+                            vlan_configured_missing_in_sot.append(diff_config_vlan_name)
+                            vlan_configured_missing_in_sot.append(diff_config_vlan_intf)
+                if vlan_configured_missing_in_sot:
+                    vlan_ids_missing.append('VLANs {} present in device configuration, missing in Source of Truth.'
+                                            .format(vlan_configured_missing_in_sot)) 
+                total_failure_detected = vlan_mismatch_attr + vlan_ids_missing
+                if total_failure_detected:
+                    self.failed(total_failure_detected)
                 else:
-                    self.passed('VLAN-ID configuration matches Source of Truth in Datafile')
+                    self.passed('VLAN-ID configuration in Source of Truth matches device configuration and vice versa.')
         except AttributeError:
-            self.skipped('No Vlans Configured on Device {}'.format(device))
-
-    @aetest.test
-    def vlan_inft_check(self):
-        pass
+            self.skipped('No Vlans Configured on Device {}.'.format(device))
 
     @aetest.cleanup
     def cleanup(self):
