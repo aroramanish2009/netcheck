@@ -223,7 +223,15 @@ class arp(aetest.Testcase):
     # groups = []
 
     @aetest.setup
-    def setup(self):
+    def setup(self, device, testbed):
+        device = testbed.devices[device]
+        if device.connected:
+            self.arp_info = device.learn('arp')
+            pprint.pprint(self.arp_info.info)
+        else:
+            self.failed('Cannot learn %s ARP information: '
+                        'did not establish connectivity to device'
+                        % device.name)
         pass
 
     # you may have N tests within each testcase
