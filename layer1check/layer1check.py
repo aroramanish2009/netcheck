@@ -89,10 +89,21 @@ class layer1checks(aetest.Testcase):
             #Refer to Genie Libs for learn model reference
             self.interface_info = device.learn('interface')
             #pprint.pprint(self.interface_info.info)
+            self.interfaces_status = device.parse('show interfaces status')
         else:
             self.failed('Cannot learn %s interface information: '
                         'did not establish connectivity to device'
                         % device.name)
+        port_status_out_list = []
+        if self.interfaces_status:
+            for clioutput, dataa in self.interfaces_status.items():
+                for port, datab in dataa.items():
+                    port_status = datab.get('status')
+                    if port_status == 'err-disabled':
+                        port_status_in_list = []
+                        port_status_in_list = NetcheckCommon.append2list(port_status_in_list,
+                                                                         device, port, port_status)
+                        port_status_out_list.append(port_status_in_list)
         #Create simple datasets for test cases.
         crc_info_out_list = []
         discard_info_out_list = []
@@ -239,6 +250,10 @@ class layer1checks(aetest.Testcase):
            self.lag_mem_down_out_list = lag_mem_down_out_list
            aetest.loop.mark(self.LAG_intf_oper_check,
                             name = (item[1] for item in self.lag_mem_down_out_list))
+        if port_status_out_list:
+           self.port_status_out_list = port_status_out_list
+           aetest.loop.mark(self.errdisabled_check,
+                            name = (item[1] for item in self.port_status_out_list))
 
     # you may have N tests within each testcase
     # as long as each bears a unique method name
@@ -313,6 +328,22 @@ class layer1checks(aetest.Testcase):
                                     %(item_duplx[1], item_duplx[2], item_duplx[3]))
         except AttributeError:
             self.passed('no half duplex interfaces detected')
+
+    @aetest.test
+    def errdisabled_check(self, name = 'none'):
+        '''
+ 
+        Interface Err Disabled Check.    
+ 
+        '''
+        try:
+            if self.port_status_out_list:
+                for item_p_status in self.port_status_out_list:
+                    if item_p_status[1] == name:
+                        self.failed('%s intercace has %s status'
+                                    %(item_p_status[1], item_p_status[2]))
+        except AttributeError:
+            self.passed('no err-disabled interfaces detected')
   
     @aetest.test
     def LAG_member_check(self, name = 'none'):
