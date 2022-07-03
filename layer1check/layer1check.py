@@ -73,6 +73,8 @@ class layer1checks(aetest.Testcase):
     # testcase groups (uncomment to use)
     # groups = []
 
+    dev_os = 0
+
     @aetest.setup
     def setup(self, device, testbed):
         '''
@@ -80,22 +82,28 @@ class layer1checks(aetest.Testcase):
         Learn layer1 model for devices in the loop. 
         
         '''
-        device = testbed.devices[device]
+        global dev_os
+        dev_os = [d.os for d in testbed if d.name in device][0]
+        device = testbed.devices[device] 
        
         logger.info(banner("Gathering Interface Information from %s"
                            % device))
+
 
         if device.connected:
             #Refer to Genie Libs for learn model reference
             self.interface_info = device.learn('interface')
             #pprint.pprint(self.interface_info.info)
-            self.interfaces_status = device.parse('show interfaces status')
+            if dev_os == 'nxos':
+                self.interfaces_status = device.parse('show interface status')
+            elif dev_os == 'ios':
+                self.interfaces_status = device.parse('show interfaces status')
         else:
             self.failed('Cannot learn %s interface information: '
                         'did not establish connectivity to device'
                         % device.name)
         port_status_out_list = []
-        if self.interfaces_status:
+        if dev_os != 'iosxr' and self.interfaces_status:
             for clioutput, dataa in self.interfaces_status.items():
                 for port, datab in dataa.items():
                     port_status = datab.get('status')
@@ -215,6 +223,7 @@ class layer1checks(aetest.Testcase):
                     inft6_status_out_list.append(inft6_status_in_list)
                
         if crc_info_out_list:
+            pprint.pprint(crc_info_out_list)
             self.crc_info_out_list = crc_info_out_list
             aetest.loop.mark(self.crc_check,
                              name = (item[1] for item in self.crc_info_out_list))
@@ -251,9 +260,10 @@ class layer1checks(aetest.Testcase):
            aetest.loop.mark(self.LAG_intf_oper_check,
                             name = (item[1] for item in self.lag_mem_down_out_list))
         if port_status_out_list:
+           pprint.pprint(port_status_out_list)
            self.port_status_out_list = port_status_out_list
            aetest.loop.mark(self.errdisabled_check,
-                            name = (item[1] for item in self.port_status_out_list))
+                   name = (item[1] for item in self.port_status_out_list))
 
     # you may have N tests within each testcase
     # as long as each bears a unique method name
@@ -312,7 +322,6 @@ class layer1checks(aetest.Testcase):
         except AttributeError:
             self.passed('No Interface Errors Detected')
                 
-
     @aetest.test
     def duplex_check(self, name = 'none'):
         '''
@@ -335,7 +344,7 @@ class layer1checks(aetest.Testcase):
  
         Interface Err Disabled Check.    
  
-        '''
+        ''' 
         try:
             if self.port_status_out_list:
                 for item_p_status in self.port_status_out_list:

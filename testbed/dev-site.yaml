@@ -1,0 +1,59 @@
+#Example testbed file
+#
+#
+testbed:
+    name: Dev Site TestBed
+    alias: TopologyTestBedDevSite
+    credentials:
+        default:
+            username: ansible
+            password: "%ENC{gAAAAABiv9u79L2W-h8GAEzzZnnn1KtITl85t4N83gf-GcrPjFTt7c4B2ETfeyOnSjrIyVFrDQO6HO9xeHNyBwcJiwb73s81WA==}"
+
+devices:
+    N9K-1:
+        os: nxos
+        type: NXOS
+        alias: N9K-1
+        connections:
+            a:
+              protocol: ssh
+              ip: 10.0.0.3
+              port: 22
+    N9K-2:
+        os: nxos
+        type: NXOS
+        alias: N9K-2
+        connections:
+            a:
+              protocol: ssh
+              ip: 10.0.0.4
+              port: 22
+  
+    XRV:
+        os: iosxr
+        type: IOSXR
+        alias: XRV
+        connections:
+            a:
+              protocol: ssh
+              ip: 10.0.0.2
+              port: 22
+
+    IOS-L3:
+        os: ios
+        type: ios
+        alias: IOS-L3
+        connections:
+            a:
+              protocol: ssh
+              ip: 10.0.0.5
+              port: 22
+    L2-IOS:
+        os: ios
+        type: ios
+        alias: L2-IOS
+        connections:
+            a:
+              protocol: ssh
+              ip: 10.0.0.6
+              port: 22
