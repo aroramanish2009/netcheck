@@ -42,15 +42,28 @@ class TestCommon(unittest.TestCase):
         Check Method intf_range_expand in Class NetcheckCommon.
         Method loops over list_of_dict, check for key 'Interfaces' and 
         replaces range of interfaces to individual interfaces.
-        Ex: ['interfaces': ['Port-channel2', 'Ethernet1/5-6']
+        Ex: [{'30': {'name': 'test', 'interfaces': ['Port-channel2', 'Ethernet1/5-6']}}]
         To
-        ['interfaces': ['Port-channel2', 'Ethernet1/5','Ethernet1/6']
+        [{'30': { 'name': 'test', 'interfaces': ['Port-channel2', 'Ethernet1/5', 'Ethernet1/6']}}]
 
         '''
-        mylist = [{'vlan_id': '30', 'name': 'test', 'interfaces': ['Port-channel2', 'Ethernet1/5-6']}, {'vlan_id': '40', 'name': 'test2'}]
-        expaned_mylist = [{'vlan_id': '30', 'name': 'test', 'interfaces': ['Port-channel2', 'Ethernet1/5', 'Ethernet1/6']}, {'vlan_id': '40', 'name': 'test2'}]
+        mylist = [{'30': {'name': 'test', 'interfaces': ['Port-channel2', 'Ethernet1/5-6']}}, {'40': {'name': 'test2'}}]
+        expaned_mylist = [{'30': { 'name': 'test', 'interfaces': ['Port-channel2', 'Ethernet1/5', 'Ethernet1/6']}}, {'40': {'name': 'test2'}}]
         check_method = NetcheckCommon.intf_range_expand(mylist)
         self.assertEqual(expaned_mylist, check_method)
+
+    def test_dict_filter(self):
+        '''
+        Check Method dict_filter in Class NetcheckCommon.
+        Method itreates over dict and only keeps key/value
+        whose keys are present in the set. Returns dict with 
+        input as dict & set. 
+        '''
+        mydict = {'interfaces': ['Port-channel21', 'Ethernet1/6'], 'mode': 'ce', 'name': 'test', 'shutdown': False, 'type': 'enet', 'vlan_id': '30'}
+        myset = ('interfaces', 'name','vlan_id')
+        new_mydict =  {'interfaces': ['Port-channel21', 'Ethernet1/6'], 'name': 'test', 'vlan_id': '30'}
+        check_method = NetcheckCommon.dict_filter(mydict, myset)
+        self.assertEqual(new_mydict,check_method)
 
 if __name__ == '__main__':
     unittest.main()

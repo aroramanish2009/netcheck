@@ -50,8 +50,6 @@ class CommonSetup(aetest.CommonSetup):
         #Learn model used only supports Cisco products.
         aetest.loop.mark(vlan, device = [d.name for d in testbed if d.os
                          in ('ios', 'iosxe', 'nxos')])
-        aetest.loop.mark(vxlan, device = [d.name for d in testbed if d.os
-                         in ('ios', 'iosxe', 'nxos')])
         aetest.loop.mark(stp, device = [d.name for d in testbed if d.os
                          in ('ios', 'iosxe', 'iosxr')])
         aetest.loop.mark(arp, device = [d.name for d in testbed if d.os
@@ -74,24 +72,29 @@ class vlan(aetest.Testcase):
 
     @aetest.setup
     def setup(self, device, testbed):
+        global dev_os
+        dev_os = [d.os for d in testbed if d.name in device][0]
         device = testbed.devices[device]
-        if device.connected:
-            self.vlan_info = device.learn('vlan')
-            #pprint.pprint(self.vlan_info.info)
+        
+        if device.connected and dev_os != 'iosxr':
+            self.vlan_info_in = device.parse('show vlan')
+            #pprint.pprint(self.vlan_info_in)
         else:
             self.failed('Cannot learn %s vlan information: '
                         'did not establish connectivity to device'
                         % device.name)
-        vlan_info_out_list = []
-        for vlan, data in self.vlan_info.info.items():
-            vlans = [k for k, v in data['configuration'].items()]
-            for i in vlans:
-                if i != '1':
-                    vlan_info_out_list.append({x:y for (x,y) in data[i].items() 
-                                               if x == 'vlan_id' or x == 'name' or x == 'interfaces' })
-        
-        if vlan_info_out_list:
-            self.vlan_info_out_list = vlan_info_out_list
+        if self.vlan_info_in:
+            default_vlans = ['1','1002','1003','1004','1005']
+            mykeys = ('interfaces','name')
+            for kv,vv in self.vlan_info_in.items():
+                for default_vlan in default_vlans:
+                    vv.pop(default_vlan, None)
+            for kvv,vvv in vv.items():
+                vvv = NetcheckCommon.dict_filter(vvv,mykeys)
+                vv[kvv] = vvv
+            if vv:
+                self.vlan_info_out = [vv]
+
 
     # you may have N tests within each testcase
     # as long as each bears a unique method name
@@ -99,92 +102,45 @@ class vlan(aetest.Testcase):
     @aetest.test
     def vlan_attr_check(self, device, vlans):
         try:
-            if self.vlan_info_out_list:
+            if self.vlan_info_out:
+                vlan_sot = []
                 for q in vlans:
                     for k,v in q.items():
                         if k == device:
-                            vlan_sot = v
-                vlan_sot =  NetcheckCommon.intf_range_expand(vlan_sot)
-                diff_from_config = [i for i in self.vlan_info_out_list if i not in vlan_sot]
-                diff_from_sot = [i for i in vlan_sot if i not in self.vlan_info_out_list]
-                vlan_mismatch_attr, vlan_ids_missing, vlan_intf_mismatch = [], [], []
-                vlan_configured_missing_in_sot, vlan_name_mismatch, vlan_id_not_in_config = [], [], []
-                if diff_from_sot:
-                    flag = 0
-                    for diff_from_sot_i in diff_from_sot:
-                        diff_vlan_id = diff_from_sot_i.get('vlan_id')
-                        diff_vlan_name = diff_from_sot_i.get('name')
-                        diff_vlan_intf = diff_from_sot_i.get('interfaces')
-                        for self.vlan_info_out_list_i in self.vlan_info_out_list:
-                            config_vlan_id = self.vlan_info_out_list_i.get('vlan_id')
-                            config_vlan_name = self.vlan_info_out_list_i.get('name')
-                            config_vlan_intf = self.vlan_info_out_list_i.get('interfaces')
-                            if config_vlan_id == diff_vlan_id:
-                                flag = 1
-                                if config_vlan_name != diff_vlan_name:
-                                    vlan_name_mismatch.append('Vlan ID {} Name Mismatch, configured: "{}" and Source of Truth "{}".'
-                                                              .format(config_vlan_id, config_vlan_name, diff_vlan_name))
-                                if config_vlan_intf != diff_vlan_intf:
-                                    vlan_intf_mismatch.append('Vlan ID {} Interface Mismatch, configured: {} and Source of Truth {}.'
-                                                              .format(config_vlan_id, config_vlan_intf, diff_vlan_intf))
-                        if flag == 0:
-                            vlan_id_not_in_config.append(diff_vlan_id)
-                    if vlan_name_mismatch or vlan_intf_mismatch:
-                        vlan_mismatch_attr = vlan_name_mismatch + vlan_intf_mismatch
-                    if vlan_id_not_in_config:
-                        vlan_ids_missing.append('vlan_ids {} missing in device configuration, present in Source of Truth.'
-                                                .format(vlan_id_not_in_config))
-                if diff_from_config:
-                    cflag = 0
-                    for diff_from_config_i in diff_from_config:
-                        diff_config_vlan_id = diff_from_config_i.get('vlan_id')
-                        for vlan_sot_i in vlan_sot:
-                            vlan_sot_vlan_id = vlan_sot_i.get('vlan_id')
-                            if diff_config_vlan_id == vlan_sot_vlan_id:
-                                cflag = 1
-                        if cflag == 0:
-                            vlan_configured_missing_in_sot.append(diff_from_config_i)
-                if vlan_configured_missing_in_sot:
-                    vlan_ids_missing.append('VLANs {} present in device configuration, missing in Source of Truth.'
-                                            .format(vlan_configured_missing_in_sot)) 
-                total_failure_detected = vlan_mismatch_attr + vlan_ids_missing
-                if total_failure_detected:
-                    self.failed(total_failure_detected)
+                            vlan_sot = NetcheckCommon.intf_range_expand(v)
+
+                if vlan_sot: 
+                    vlansindeviceconfig = [ k for k,v in self.vlan_info_out[0].items()]
+                    vlansinsot = [ k for k,v in vlan_sot[0].items()]
+
+                    vlansmissingindeviceconfig = [item for item in vlansinsot if item not in vlansindeviceconfig ]
+                    vlansmissinginsot = [ item for item in vlansindeviceconfig if item not in vlansinsot ]
+                    if vlansmissinginsot and not vlansmissingindeviceconfig:
+                        self.failed('List of Vlans configured on device but missing in SOT: {}'.format(vlansmissinginsot))
+                    elif vlansmissingindeviceconfig and not vlansmissinginsot:
+                        self.failed('List of Vlans present in SOT but not configured on Device: {}'.format(vlansmissingindeviceconfig))
+                    elif vlansmissingindeviceconfig and vlansmissinginsot:
+                        self.failed('List of Vlans present in SOT but not configured on Device: {} and List of Vlans configured on device but missing in SOT: {}'.format(vlansmissingindeviceconfig,vlansmissinginsot))
+                    diffrential = []
+                    for item in vlan_sot:
+                        for k,v in item.items():
+                            for item1 in self.vlan_info_out:
+                                for k1,v1 in item1.items():
+                                    if k == k1 and v != v1:
+                                        mydict = {'vlan': k, 'SOT': v, 'CONFIGURED': v1}
+                                        diffrential.append(mydict)
+                    if diffrential:
+                        self.failed('Mismatch Detected between SOT & Configured: {}'.format(diffrential))
                 else:
-                    self.passed('VLAN-ID configuration in Source of Truth matches device configuration and vice versa.')
+                    self.skipped('No Vlans Data found in SOT for Device: {}.'.format(device))
+
+            self.passed('VLAN-ID configuration in Source of Truth matches device configuration and vice versa.')
         except AttributeError:
             self.skipped('No Vlans Configured on Device {}.'.format(device))
 
     @aetest.cleanup
     def cleanup(self):
         pass
-    
-
-class vxlan(aetest.Testcase):
-    '''vxlan
-
-    < docstring description of this testcase >
-
-    '''
-
-    # testcase groups (uncomment to use)
-    # groups = []
-
-    @aetest.setup
-    def setup(self):
-        pass
-
-    # you may have N tests within each testcase
-    # as long as each bears a unique method name
-    # this is just an example
-    @aetest.test
-    def test(self):
-        pass
-
-    @aetest.cleanup
-    def cleanup(self):
-        pass
-    
 
 class stp(aetest.Testcase):
     '''stp
