@@ -51,7 +51,7 @@ class CommonSetup(aetest.CommonSetup):
         aetest.loop.mark(vlan, device = [d.name for d in testbed if d.os
                          in ('ios', 'iosxe', 'nxos')])
         aetest.loop.mark(stp, device = [d.name for d in testbed if d.os
-                         in ('ios', 'iosxe', 'iosxr')])
+                         in ('ios', 'iosxe', 'nxos')])
         aetest.loop.mark(arp, device = [d.name for d in testbed if d.os
                          in ('ios', 'iosxe', 'nxos', 'iosxr')])
 
@@ -100,7 +100,32 @@ class vlan(aetest.Testcase):
     # as long as each bears a unique method name
     # this is just an example
     @aetest.test
-    def vlan_attr_check(self, device, vlans):
+    def vlan_config_check(self, device, vlans):
+        try:
+            if self.vlan_info_out:
+                vlan_sot = []
+                for q in vlans:
+                    for k,v in q.items():
+                        if k == device:
+                            vlan_sot = NetcheckCommon.intf_range_expand(v)
+                if vlan_sot:
+                    vlansindeviceconfig = [ k for k,v in self.vlan_info_out[0].items()]
+                    vlansinsot = [ k for k,v in vlan_sot[0].items()]
+                    vlansmissingindeviceconfig = [item for item in vlansinsot if item not in vlansindeviceconfig ]
+                    vlansmissinginsot = [ item for item in vlansindeviceconfig if item not in vlansinsot ]
+                    if vlansmissinginsot and not vlansmissingindeviceconfig:
+                        self.failed('List of Vlans configured on device but missing in SOT: {}'.format(vlansmissinginsot)) 
+                    elif vlansmissingindeviceconfig and not vlansmissinginsot:
+                        self.failed('List of Vlans present in SOT but not configured on Device: {}'.format(vlansmissingindeviceconfig))
+                    elif vlansmissingindeviceconfig and vlansmissinginsot:
+                        self.failed('List of Vlans present in SOT but not configured on Device: {} and List of Vlans configured on device but missing in SOT: {}'.format(vlansmissingindeviceconfig,vlansmissinginsot))
+                    else:
+                        self.passed('No Vlans Mismatch on Device {}.'.format(device))
+        except AttributeError:
+            self.skipped('No Vlans Configured on Device {}.'.format(device))
+        
+    @aetest.test
+    def vlan_association_check(self, device, vlans):
         try:
             if self.vlan_info_out:
                 vlan_sot = []
@@ -110,17 +135,6 @@ class vlan(aetest.Testcase):
                             vlan_sot = NetcheckCommon.intf_range_expand(v)
 
                 if vlan_sot: 
-                    vlansindeviceconfig = [ k for k,v in self.vlan_info_out[0].items()]
-                    vlansinsot = [ k for k,v in vlan_sot[0].items()]
-
-                    vlansmissingindeviceconfig = [item for item in vlansinsot if item not in vlansindeviceconfig ]
-                    vlansmissinginsot = [ item for item in vlansindeviceconfig if item not in vlansinsot ]
-                    if vlansmissinginsot and not vlansmissingindeviceconfig:
-                        self.failed('List of Vlans configured on device but missing in SOT: {}'.format(vlansmissinginsot))
-                    elif vlansmissingindeviceconfig and not vlansmissinginsot:
-                        self.failed('List of Vlans present in SOT but not configured on Device: {}'.format(vlansmissingindeviceconfig))
-                    elif vlansmissingindeviceconfig and vlansmissinginsot:
-                        self.failed('List of Vlans present in SOT but not configured on Device: {} and List of Vlans configured on device but missing in SOT: {}'.format(vlansmissingindeviceconfig,vlansmissinginsot))
                     diffrential = []
                     for item in vlan_sot:
                         for k,v in item.items():
@@ -153,15 +167,38 @@ class stp(aetest.Testcase):
     # groups = []
 
     @aetest.setup
-    def setup(self):
-        pass
+    def setup(self, device, testbed):
+        global dev_os
+        dev_os = [d.os for d in testbed if d.name in device][0]
+        device = testbed.devices[device]
+
+        if device.connected and dev_os != 'iosxr':
+            self.stp_info = device.parse('show spanning-tree detail')
+            pprint.pprint(self.stp_info)
+        else:
+            self.failed('Cannot learn %s STP information: '
+                        'did not establish connectivity to device'
+                        % device.name)
+
 
     # you may have N tests within each testcase
     # as long as each bears a unique method name
     # this is just an example
     @aetest.test
-    def test(self):
-        pass
+    def stp_mode_check(self, device, stpinfo):
+        try:
+            if self.stp_info:
+                for item in stpinfo:
+                    for k,v in item.items():
+                        if k == device:
+                            stp_mode = v.get('stp_mode')
+                for k,v in self.stp_info.items():
+                    if k == stp_mode:
+                        self.passed('Configured STP Mode: {} Matches SOT STP Mode: {}.'.format(k,stp_mode))
+                    else:
+                        self.failed('Configured STP Mode: {} Does Not Match SOT STP Mode: {}.'.format(k,stp_mode))
+        except AttributeError:
+            self.skipped('No Spanning Tree Information discovered on Device {}.'.format(device))
 
     @aetest.cleanup
     def cleanup(self):
