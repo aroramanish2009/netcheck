@@ -200,6 +200,28 @@ class stp(aetest.Testcase):
         except AttributeError:
             self.skipped('No Spanning Tree Information discovered on Device {}.'.format(device))
 
+    @aetest.test
+    def stp_bridge_priority(self, device, stpinfo):
+        try:
+           if self.stp_info:
+               for item in stpinfo:
+                   for k,v in item.items():
+                       if k == device:
+                           sot_bridge_priority = v.get('stp_priority')
+               if sot_bridge_priority:
+                   for k,v in self.stp_info.items():
+                       for kv,vv in v.items():
+                           if kv == 'vlans':
+                               for kvv,vvv in vv.items():
+                                   vlan_bp = vvv.get('bridge_priority')
+                                   if vlan_bp and vlan_bp != sot_bridge_priority:
+                                       self.failed('Configured Bridge Priority {} Does Not Match SOT Bridge Priority for Vlan {} in Device {}'.format(vlan_bp,kvv,device))
+                   self.passed('No Mismatch identified for for Device {}'.format(device)) 
+               else:
+                   self.skipped('No Bridge Priority discovered in SOT for device {}'.format(device))
+        except AttributeError:
+            self.skipped('No Spanning Tree Information discovered on Device {}.'.format(device))
+
     @aetest.cleanup
     def cleanup(self):
         pass

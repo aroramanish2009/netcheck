@@ -8,6 +8,15 @@ testcases:
         
         parameters:
             vlans:
-                - N9K-1: [{'30': {'interfaces': ['Port-channel20', 'Ethernet1/6-7'], 'name': 'test'}}]
-                - N9K-2: [{'30': {'interfaces': ['Port-channel21', 'Ethernet1/6'], 'name': 'test'},'40':{'name': 'test2', 'interfaces': ['Port-channel21', 'Ethernet1/6', 'Ethernet1/7']}}]
-            trunks: [{N9K-1: ['Po20']}, {N9K-2: ['Po20']}]
+                - N9K-1: [{'30': {'interfaces': ['Port-channel20', 'Ethernet1/6'], 'name': 'test'}, '40': {'interfaces': ['Port-channel20', 'Ethernet1/6'], 'name': 'test2'}}]
+                - N9K-2: [{'30': {'interfaces': ['Port-channel21', 'Ethernet1/1', 'Ethernet1/6'], 'name': 'test'},'40':{'name': 'test2', 'interfaces': ['Port-channel21', 'Ethernet1/1', 'Ethernet1/6-7']}}]
+                - IOS-L3: [{'40':{'name': 'MGMT', 'interfaces': ['Ethernet0/0']}}]
+                - L2-IOS: [{'40':{'name': 'MGMT'}}]
+    stp:
+
+       parameters:
+            stpinfo:
+                - N9K-1: {'stp_mode': 'rapid_pvst', 'stp_priority': 4096 }
+                - N9K-2: {'stp_mode': 'rapid_pvst', 'stp_priority': 32768 }
+                - IOS-L3: {'stp_mode': 'pvst', 'stp_priority': 32768 }
+                - L2-IOS: {'stp_mode': 'pvst', 'stp_priority': 32768 }
