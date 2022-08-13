@@ -222,6 +222,29 @@ class stp(aetest.Testcase):
         except AttributeError:
             self.skipped('No Spanning Tree Information discovered on Device {}.'.format(device))
 
+    @aetest.test
+    def stp_topology_stability(self, device):
+        try:
+            if self.stp_info.items():
+                for k,v in self.stp_info.items():
+                    for kv,vv in v.items():
+                        if kv == 'vlans':
+                            for kvv,vvv in vv.items():
+                                vlan_id = vvv.get('vlan_id')
+                                vlan_tstc = vvv.get('time_since_topology_change')
+                                vlan_tfp = vvv.get('topology_from_port')
+                                if len(re.findall(':', vlan_tstc)) > 1:
+                                    first_entry = vlan_tstc.split(':')[0]
+                                    second_entry = vlan_tstc.split(':')[1]
+                                    second_entry = int(second_entry)
+                                    if first_entry == '0' or first_entry == '00':
+                                        if second_entry < 30:
+                                            pass
+
+            pass
+        except AttributeError:
+            self.skipped('No Spanning Tree Information discovered on Device {}.'.format(device))
+
     @aetest.cleanup
     def cleanup(self):
         pass
